@@ -1,0 +1,97 @@
+import hou
+
+def get_average_position(nodes):
+  total_x = 0
+  total_y = 0
+  for node in nodes:
+    pos = node.position()
+    total_x += pos.x()
+    total_y += pos.y()
+  return hou.Vector2(total_x / len(nodes), total_y / len(nodes))
+
+def organize_nodes(nodes, target_position):
+  
+  center_offset = hou.Vector2(50, 0)
+  for i, node in enumerate(nodes):
+    new_position = target_position + center_offset * (i % 2, i // 2)
+    node.setPosition(new_position)
+
+def sanitize_name(name):
+    invalid_chars = " `~!@#$%^&*()-+=[]{}|;:'\",<>?/\\"
+    for char in invalid_chars:
+        name = name.replace(char, '_')
+    return name
+
+selected_nodes = hou.selectedNodes()
+desktop = hou.ui.curDesktop()
+pane = desktop.paneTabUnderCursor()
+current_context = pane.pwd().childTypeCategory().name()
+nulls = []
+
+def create_and_connect_null(node, out, conn):
+  null = node.createOutputNode('null')
+  new_name = f"OUT_{node.name()}_to_{out.name()}__{sanitize_name(conn.outputLabel())}"
+  null.setName(new_name)
+  null.setInput(0, node, conn.outputIndex())
+  null.setColor(hou.Color((0, 0, 0)))
+  return null
+
+def process_node(node):
+  if node.type().name() != 'null':
+    if node.outputs():
+      output_connections = node.outputConnections()
+      for conn in output_connections:
+        out = conn.outputNode()
+        org = [out,node]
+        average_position = get_average_position(selected_nodes)
+        if out.type().name() != 'null':
+          null = create_and_connect_null(node, out, conn)
+          out.setInput(conn.inputIndex(), null)
+      
+        else:
+          null = out
+          null.setName("OUT_"+null.name())
+          null.setColor(hou.Color((0, 0, 0)))
+        null.setInput(0, node, conn.outputIndex())
+        organize_nodes(nulls, average_position)
+    else:
+      itr = 0
+      while True:
+        null = node.createOutputNode('null')
+        null.setName(f"OUT_{node.name()}{itr}")
+        null.setColor(hou.Color((0, 0, 0)))
+        null.moveToGoodPosition()
+        try:
+          null.setInput(0, node, itr)
+          itr += 1
+        except hou.InvalidInput:
+          null.destroy()
+          break
+  else:
+    
+    if not node.name().startswith("OUT_"):
+        if node.inputConnections():
+            node.setName(f"OUT_{node.inputConnections()[0].inputNode().name()}")
+    node.setColor(hou.Color((0, 0, 0)))
+
+  if current_context == "Sop":
+    node.setRenderFlag(False)
+    node.setTemplateFlag(False)
+
+if selected_nodes:
+  for node in selected_nodes:
+    process_node(node)
+  
+else:
+  network_editor = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+  current_network = network_editor.pwd()
+  cursor_position = network_editor.cursorPosition()
+  null = current_network.createNode('null')
+  null.setPosition(cursor_position)
+  null.setColor(hou.Color((0, 0, 0)))
+  if not current_network.node("OUT_"):
+    null.setName("OUT_")
+  null.setDisplayFlag(True)
+  if current_context == "Sop":
+    null.setRenderFlag(True)
+    null.setTemplateFlag(True)
