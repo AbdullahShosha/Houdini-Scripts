@@ -1,0 +1,17 @@
+import hou
+selected = hou.selectedNodes()
+for node in selected:
+    geo = node.geometry()
+    class_values = list(set(geo.primStringAttribValues("name")))
+    previous = node
+    for elem in class_values:
+        blast_node = node.createOutputNode("blast")
+        blast_node.setName(node.name().split("OUT_")[1]+'_'+elem)
+        blast_node.moveToGoodPosition(relative_to_inputs=True)
+        blast_node.parm("group").set("@name="+elem)
+        blast_node.parm("negate").set(True)
+        null_node = blast_node.createOutputNode("null")
+        null_node.setName(node.name()+'_'+elem)
+        null_node.moveToGoodPosition(relative_to_inputs=True)
+        
+    null_node.moveToGoodPosition(relative_to_inputs=True)
