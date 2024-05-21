@@ -1,0 +1,22 @@
+import hou
+selected = hou.selectedNodes()[0]
+wrangle = selected.createOutputNode('attribwrangle')
+wrangle.parm("class").set(1)
+wrangle.setInput(0, selected)
+wrangle.setColor(hou.Color((1, 0, 0))) 
+wrangle.parm("snippet").set('''i@typeid = primintrinsic(0,"typeid",@primnum);''')
+
+
+class_values = list(set(wrangle.geometry().primIntAttribValues("typeid")))
+if len(class_values)>1:
+    for value in class_values:
+        blast = selected.createOutputNode('blast')
+        blast.parm("grouptype").set(4)
+        blast.parm("negate").set(True)
+        blast.setInput(0, wrangle)
+        blast.parm("group").set('''@typeid='''+str(value))
+        null = blast.createOutputNode('null')
+        null.setName("OUT_"+blast.geometry().prims()[0].intrinsicValue('typename') )
+        null.setInput(0, blast)
+        blast.moveToGoodPosition(relative_to_inputs=True)
+        null.moveToGoodPosition(relative_to_inputs=True)
