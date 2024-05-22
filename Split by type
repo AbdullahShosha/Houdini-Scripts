@@ -8,7 +8,7 @@ wrangle.parm("snippet").set('''i@typeid = primintrinsic(0,"typeid",@primnum);'''
 
 
 class_values = list(set(wrangle.geometry().primIntAttribValues("typeid")))
-if len(class_values)>1:
+if len(class_values)>0:
     for value in class_values:
         blast = selected.createOutputNode('blast')
         blast.parm("grouptype").set(4)
