@@ -6,7 +6,6 @@ for node in selected:
     previous = node
     for elem in class_values:
         blast_node = node.createOutputNode("blast")
-        blast_node.setName(node.name().split("OUT_")[1]+'_'+elem)
         blast_node.moveToGoodPosition(relative_to_inputs=True)
         blast_node.parm("group").set("@name="+elem)
         blast_node.parm("negate").set(True)
